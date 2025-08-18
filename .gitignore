@@ -1,0 +1,5 @@
+node_modules/
+.env
+**/__pycache__/
+worker_py/.venv/
+worker_py/app/__pycache__/
