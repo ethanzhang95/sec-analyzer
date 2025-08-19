@@ -1,5 +1,21 @@
-node_modules/
-.env
-**/__pycache__/
+# --- Node (NestJS) ---
+api/node_modules/
+api/dist/
+api/.env
+
+# In case you still have nested scaffolding:
+api/api/node_modules/
+api/api/dist/
+
+# --- Python ---
 worker_py/.venv/
-worker_py/app/__pycache__/
+worker_py/__pycache__/
+worker_py/.env
+__pycache__/
+
+# --- App data / caches ---
+10k10q/
+store10k10q/
+
+# --- OS junk ---
+.DS_Store
