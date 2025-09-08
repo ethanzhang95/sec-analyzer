@@ -8,7 +8,7 @@ api/api/node_modules/
 api/api/dist/
 
 # --- Python ---
-worker_py/venv/
+worker_py/.venv/
 worker_py/__pycache__/
 worker_py/.env
 __pycache__/
