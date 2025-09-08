@@ -88,6 +88,8 @@ This starts the frontend at http://localhost:3000
 
  Deploy backend + worker to cloud (AWS/GCP/Azure)
 
+ Enable MCP Server Functionality
+
 
  📄 License
 
