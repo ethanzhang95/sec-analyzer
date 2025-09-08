@@ -9,7 +9,7 @@ The system retrieves filings directly from the SEC, parses **financial tables on
 ---
 
 ## 📂 Project Structure
-
+```
 SECapp/
 ├── api/ # Spring Boot backend (Java/Gradle)
 ├── frontend/ # Next.js frontend (TypeScript/React)
@@ -17,7 +17,7 @@ SECapp/
 ├── 10k10q/ # Cached SEC filings
 ├── store10k10q/ # Persisted vector index
 └── README.md
-
+```
 ## ✨ Features
 - Query **10-K / 10-Q filings** by company and year  
 - Extract values from **financial tables** (cleaner answers)  
