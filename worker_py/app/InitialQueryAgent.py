@@ -12,6 +12,7 @@ import threading
 from FilingParserAgent import FilingParserAgent
 from FinalQueryAgent import FinalQueryAgent
 from htmDownloader import SECFetchHTM  # our downloader class
+from sec_resolver import TickerResolver
 
 # Import the LLM from llama_index (same as used in FinalQueryAgent)
 from llama_index.llms.openai import OpenAI as LlamaOpenAI
@@ -37,6 +38,8 @@ class QueryCoordinatorAgent:
         self.download_folder = download_folder
         self.persist_dir = persist_dir
         self.formToFile = {}
+        self.resolver = TickerResolver(user_agent=self.edgar_identity)
+        self.resolver.load()
         
         if openai_api_key:
             openai.api_key = openai_api_key
@@ -164,9 +167,12 @@ class QueryCoordinatorAgent:
                 end_date = f"{ty+1}-02-28"
                 
                 #fetch all filings for this company and form type within the broad range
-                filings_list = self.htmDownloader.get_filing_list(ticker, form_type, start_date, end_date)
+                # replace filings_list with cik version
+                identifier = self.resolver.cik_for(ticker) or ticker
+                filings_list = self.htmDownloader.get_filing_list(identifier, form_type, start_date, end_date)
                 if not filings_list:
-                    print(f"No filings found for {ticker} between {start_date} and {end_date}")
+                    # print(f"No filings found for {ticker} between {start_date} and {end_date}")
+                    print("currently on: " + (identifier if identifier else ""))
                     continue
                 
                 print("filings list right here")
@@ -217,62 +223,6 @@ class QueryCoordinatorAgent:
             #persist changes once
         print("Finished processing filings for companies.")
 
-    '''
-    def run(self, initial_query: str):
-        """
-        Main method that:
-          1. Uses the LLM to extract companies (with tickers) from the initial query.
-          2. Downloads the corresponding filings.
-          3. Processes the filings (parsing and indexing).
-          4. Runs the final query using FinalQueryAgent.
-        """
-        companies = self.get_companies_from_query(initial_query)
-        print("Companies extracted:", companies)
-        self.process_filings(companies)
-        response, passing, citation = self.final_query_agent.run(prompt_str=initial_query, query_str=initial_query)
-        #if passing is false, run again
-        count = 0
-        while passing == False and count < 2:
-            response, passing, citation = self.final_query_agent.run(prompt_str=initial_query, query_str=initial_query)
-            count += 1
-        print("Final Query Response:", response)
-        print("Citation:", citation)
-        return response, passing
-    '''
-    '''
-    def run(self, initial_query: str):
-        # 1. Identify companies in user query
-        companies = self.get_companies_from_query(initial_query)
-        
-        # 2. Download and parse the needed filings
-        self.process_filings(companies)
-        
-        # 3. Run the final query
-        #    final_query_agent.run() returns: (response_obj, passing_bool, citation_list)
-        response_obj, passing, citation_list = self.final_query_agent.run(
-            prompt_str=initial_query, 
-            query_str=initial_query
-        )
-
-        # Retry logic if passing=False
-        count = 0
-        while passing is False and count < 2:
-            response_obj, passing, citation_list = self.final_query_agent.run(
-                prompt_str=initial_query, 
-                query_str=initial_query
-            )
-            count += 1
-        
-        # NOTE: "response_obj" is a LlamaIndex "Response" object,
-        #       so we want "response_obj.response" for the final answer text.
-
-        # EXACT LITERAL PRINT:
-        print(f"Final Query Response: {response_obj.response}")
-        print(f"Citation: {citation_list}")
-
-        # Return them if needed
-        return response_obj.response, citation_list
-    '''
     def run(self, initial_query: str):
         try:
             companies = self.get_companies_from_query(initial_query)
@@ -295,6 +245,8 @@ class QueryCoordinatorAgent:
             # Print or return the results
             print(f"Final Query Response: {response_obj.response}")
             print(f"Citation: {citation_list}")
+             
+            
             return response_obj.response, citation_list
 
         except Exception as e:
@@ -309,20 +261,10 @@ class QueryCoordinatorAgent:
 # Example Usage
 # -------------------------------
 if __name__ == "__main__":
-    #ezhockey95 account
-    #SEC_API_KEY = "43019e4aeceac67f586eaed6ba508aeeaee599e43bd47e90d12f269f1a0663e5"
-    #ethanzhangva95 account
-    #SEC_API_KEY = "e904e3262a9fbf4e3d9decc2afdc772632d1f972ca5fe42c584fb601a2880b97"
-    #albert account
-    SEC_API_KEY = "a3e5eb6ce44ba509fb776675af1ff9a73e2c29b3a100f3a0acc8b29404bc7e43"
-    EDGAR_IDENTITY = "ezhockey95@gmail.com"
+    SEC_API_KEY = os.getenv("SEC_API_KEY") 
+    EDGAR_IDENTITY = "ezhockey95@gmail.com" # replace with your email
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     
-   # initial_query = (
-        #"Rivian's long-term debt for year ending December 31, 2024"
-        #"What is the net income of Apple for the year 2022?"
-        #"Give me NVDIA's cash and cash equivalents at end of period for the quarterly period ended April 28, 2024"
-   # )
     
     coordinator = QueryCoordinatorAgent(
         sec_api_key=SEC_API_KEY,

@@ -1,9 +1,4 @@
 # FilingParserAgent.py
-'''
-
-'''
-
-# FilingParserAgent.py
 
 import os
 import re
@@ -278,7 +273,8 @@ class FilingParserAgent:
         print(f"Built {len(self.narrative_documents)} narrative documents and {len(self.table_documents)} table documents.")
         return self.narrative_documents, self.table_documents
 
-    def build_index(self, chunk_size=2048, chunk_overlap=0, index_id="10k10q"):
+    # trying 8192 chunk size change
+    def build_index(self, chunk_size=4096, chunk_overlap=0, index_id="10k10q"):
         """
         Builds the embedding index from the narrative and table documents and persists it.
         """
@@ -301,15 +297,3 @@ class FilingParserAgent:
             
         print("Index built and persisted to:", self.persist_dir)
         
-# -------------------------------
-# Example Usage
-# -------------------------------
-'''
-if __name__ == "__main__":
-    file_path = "/Users/ethanzhang/Documents/UVA/Second Year/Beachpoint/BP/10k10q/a10-k20189292018.htm"
-    identity = "ezhockey95@gmail.com"
-    
-    agent = FilingParserAgent(file_path, identity)
-    agent.parse_10k_financial_tables()      # Parse the filing into sections
-    agent.build_index()                     # Build and persist the embedding index
-'''

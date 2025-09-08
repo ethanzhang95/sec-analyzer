@@ -31,7 +31,7 @@ class FinalQueryAgent:
         self.index = index
         Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-large")
         # Create an LLM handle with the updated model settings
-        self.llm = OpenAI(model="gpt-4-turbo", temperature=1) #set temperature to 1
+        self.llm = OpenAI(model="gpt-4-turbo", temperature=0) #set temperature to 1
         self.citation = []
 
     def input_mapper_fn(self, query_str: str):
@@ -108,8 +108,8 @@ class FinalQueryAgent:
                 #MetadataFilter(key="form_type", value=[form_type], operator=FilterOperator.EQ)
             ])
 
-            retriever_narrative = index.as_retriever(similarity_top_k=10, filters=filters_narrative)
-            retriever_table = index.as_retriever(similarity_top_k=10, filters=filters_table)
+            retriever_narrative = index.as_retriever(similarity_top_k=5, filters=filters_narrative)
+            retriever_table = index.as_retriever(similarity_top_k=25, filters=filters_table)
 
             # Set up LLM-based rerankers
             reranker_narrative = LLMRerank(llm=self.llm, top_n=5)
@@ -171,6 +171,8 @@ class FinalQueryAgent:
             # Build the query pipeline
             print("Starting the RAG Query Pipeline...")
             p = QueryPipeline(verbose=True)
+            
+            
             p.add_modules({
                 "input": input_mapper,
                 "llm": self.llm,
@@ -180,24 +182,12 @@ class FinalQueryAgent:
                 "merge_reranked": merge_reranked,
                 "summarizer": summarizer,
                 "reranker_narrative": reranker_narrative,
-                "reranker_table": reranker_table
+                "reranker_table": reranker_table,
             })
-            '''
-            p.add_link("input", "prompt_tmpl")
-
-            # 2) user query (from prompt_tmpl) --> table retriever
-            p.add_link("prompt_tmpl", "retriever_table", dest_key="query_str")
-
-            # 3) user query + table nodes --> table re-ranker
-            p.add_link("prompt_tmpl", "reranker_table", dest_key="query_str")
-            p.add_link("retriever_table", "reranker_table", dest_key="nodes")
-
-            # 4) final summarizer sees user query + re-ranked table nodes
-            p.add_link("prompt_tmpl", "summarizer", dest_key="query_str")
-            p.add_link("reranker_table", "summarizer", dest_key="nodes")
-            '''
+            
 
             # Link modules to form the processing graph
+
             
             p.add_link("input", "prompt_tmpl")
             p.add_link("prompt_tmpl", "llm", dest_key="messages")
@@ -208,11 +198,15 @@ class FinalQueryAgent:
             p.add_link("llm", "reranker_narrative", dest_key="query_str")
             p.add_link("retriever_table", "reranker_table", dest_key="nodes")
             p.add_link("llm", "reranker_table", dest_key="query_str")
-
+            
             p.add_link("reranker_narrative", "merge_reranked", dest_key="nodes1")
             p.add_link("reranker_table", "merge_reranked", dest_key="nodes2")
             p.add_link("merge_reranked", "summarizer", dest_key="nodes")
             p.add_link("llm", "summarizer", dest_key="query_str")
+            
+        
+
+
             
 
             print("Summarizer input keys:", summarizer.as_query_component().input_keys)
@@ -227,7 +221,7 @@ class FinalQueryAgent:
 
         except Exception as e:
             print("Error in build_pipeline_query:", e)
-            return None, None
+            return None, False, []
     
     #Note: try to save citations and have response in the final response
     def run(self, prompt_str: str, query_str: str):
@@ -242,8 +236,18 @@ class FinalQueryAgent:
         return self.build_pipeline_query(prompt_str, query_str, og_query_str)
         '''
         
+        '''
         topic_instruction = (
             "Instructions: You are a financial analyst. Please Carefully compare rows and columns in order to answer the questions. Use only the retrieved information from 10K or 10Q form that maybe in multiple tabular data in markdown format. The response shall present numeric values that were extracted from the tabular table. If the data isn't sufficient, say so"
+        )
+        '''
+        
+        topic_instruction = (
+            "CRITICAL: I am providing you with actual financial tables from SEC filings. "
+            "You MUST extract and provide the specific numeric answer from these tables. "
+            "Do NOT say you don't have access - the data is provided below. "
+            "Use only the retrieved tabular data to answer the question with specific numbers. "
+            "IMPORTANT: Always specify units (millions, billions, etc.) based on the context of the large numbers in the financial tables."
         )
         
         '''topic_instruction = (
@@ -255,6 +259,7 @@ class FinalQueryAgent:
         )'''
 
         query_str = (
+            "I have access to financial documents and tables. " +
             "You need to answer this question: " + query_str + " "
             + topic_instruction
         )

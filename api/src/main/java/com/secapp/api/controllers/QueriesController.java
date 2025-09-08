@@ -25,6 +25,7 @@ public class QueriesController {
 
   @PostMapping
   public ResponseEntity<WorkerResponse> create(@Valid @RequestBody QueryRequest req) {
+    System.out.println("Received POST /queries with prompt: " + req.getPrompt()); // Add this line
     WorkerResponse resp = service.runPrompt(req);
     return ResponseEntity.ok(resp);
   }
